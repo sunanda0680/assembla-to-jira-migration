@@ -12,7 +12,7 @@ else
 end
 
 ITEMS = [
-  { name: 'ticket_comments' },
+  { name: 'ticket_comments', q: 'per_page=100' },
   # ticket-comments.csv
   # id,comment,user_id,created_on,updated_at,ticket_changes,user_name,user_avatar_url,ticket_id,ticket_number
   { name: 'attachments' },
@@ -41,7 +41,11 @@ RELATIONSHIPS = %w{parent child related duplicate sibling story subtask dependen
 
 def get_ticket_attr(space_id, ticket_number, attr, opts)
   results = []
-  response = http_request("#{ASSEMBLA_API_HOST}/spaces/#{space_id}/tickets/#{ticket_number}/#{attr}", opts)
+  #response = http_request("#{ASSEMBLA_API_HOST}/spaces/#{space_id}/tickets/#{ticket_number}/#{attr}", opts)
+  url = "#{ASSEMBLA_API_HOST}/spaces/#{space_id}/tickets/#{ticket_number}/#{attr}"
+  url += "?page=1&#{opts[:q]}" if opts[:q]
+  response = http_request(url, opts)
+
   count = get_response_count(response)
   if count.positive?
     json = JSON.parse(response.body)
@@ -74,7 +78,8 @@ ITEMS.each do |item|
   name = item[:name]
   item[:results] = []
   tickets.each_with_index do |ticket, index|
-    ticket[name] = get_ticket_attr(space['id'], ticket['number'], name, counter: index + 1, total: @total_tickets, continue_onerror: true)
+    #ticket[name] = get_ticket_attr(space['id'], ticket['number'], name, counter: index + 1, total: @total_tickets, continue_onerror: true)
+    ticket[name] = get_ticket_attr(space['id'], ticket['number'], name, counter: index + 1, total: @total_tickets, continue_onerror: true, q: item[:q] )
     ticket[name].each do |result|
       result.delete('ticket_id')
       result = result.merge(ticket_id: ticket['id'], ticket_number: ticket['number'])

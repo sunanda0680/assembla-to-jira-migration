@@ -1,8 +1,10 @@
 # frozen_string_literal: true
 
 load './lib/common.rb'
+SPACE_NAME = ENV['ASSEMBLA_SPACE']
+ASSEMBLA_HEADERS = { 'X-Api-Key': ASSEMBLA_API_KEY, 'X-Api-Secret': ASSEMBLA_API_SECRET }.freeze
 
-SPACE_NAME = ENV['JIRA_API_PROJECT_NAME']
+#SPACE_NAME = ENV['JIRA_API_PROJECT_NAME']
 JIRA_PROJECT_NAME = SPACE_NAME + (@debug ? ' TEST' : '')
 
 space = get_space(SPACE_NAME)
@@ -60,24 +62,24 @@ FileUtils.mkdir_p(attachments_dirname) unless File.directory?(attachments_dirnam
   nr = 0
   while File.exist?(filepath)
     nr += 1
-    goodbye("Failed for filepath='#{filepath}', nr=#{nr}") if nr > 999
+    goodbye("Failed for filepath='#{filepath}', nr=#{nr}") if nr > 99999
     extname = File.extname(filepath)
     basename = File.basename(filepath, extname)
     dirname = File.dirname(filepath)
-    basename.sub!(/\.\d{3}$/, '')
-    filename = "#{basename}.#{nr.to_s.rjust(3, '0')}#{extname}"
+    basename.sub!(/\.\d{5}$/, '')
+    filename = "#{basename}.#{nr.to_s.rjust(5, '0')}#{extname}"
     filepath = "#{dirname}/#{filename}"
   end
   # BUG: "http://api.assembla.com/v1/spaces/europeana-npc/documents/:id/download" should be:
   #      "http://api.assembla.com/spaces/europeana-npc/documents/:id/download/:id
-  url.sub!(%r{v1/}, '')
-  m = %r{documents/(.*)/download}.match(url)
-  url += "/#{m[1]}"
+ # url.sub!(%r{v1/}, '')
+ # m = %r{documents/(.*)/download}.match(url)
+ # url += "/#{m[1]}"
 
   percentage = ((counter * 100) / @attachments_total).round.to_s.rjust(3)
   puts "#{percentage}% [#{counter}|#{@attachments_total}] #{created_at} #{assembla_ticket_id} '#{filename}' (#{content_type})"
   begin
-    content = RestClient::Request.execute(method: :get, url: url)
+    content = RestClient::Request.execute(method: :get, url: url, headers: ASSEMBLA_HEADERS)
     IO.binwrite(filepath, content)
     @jira_attachments << {
       created_at: created_at,

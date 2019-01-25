@@ -125,6 +125,13 @@ def create_ticket_jira(ticket, counter, total, grand_counter, grand_total)
   ticket_id = ticket['id']
   ticket_number = ticket['number']
   summary = reformat_markdown(ticket['summary'], @list_of_logins, @list_of_images, 'summary')
+  if summary.length <= 255
+    puts "Summary length is OK"
+  else
+    add_to_description = summary
+    add = 1
+    summary = summary[0...255].gsub(/\s\w+\s*$/, '...')
+  end
   created_on = ticket['created_on']
   completed_date = date_format_yyyy_mm_dd(ticket['completed_date'])
   reporter_name = @user_id_to_login[ticket['reporter_id']]
@@ -142,8 +149,16 @@ def create_ticket_jira(ticket, counter, total, grand_counter, grand_total)
                   "[~#{reporter_name}]"
                 end
   description += "Author #{author_name} | "
-  description += "Created on #{date_time(created_on)}\n\n"
+  description += "Created on #{date_time(created_on)}\n"
+  if add == 1
+    description += "Summary: #{add_to_description}\n"
+  end
   description += "#{reformat_markdown(ticket['description'], @list_of_logins, @list_of_images, 'description')}"
+  if description.length <= 32767
+    puts "Desctption length is OK"
+  else
+    description = "Too long description, attached as a file"
+  end
 
   labels = get_labels(ticket)
 
@@ -175,7 +190,7 @@ def create_ticket_jira(ticket, counter, total, grand_counter, grand_total)
       "#{@customfield_name_to_id['Assembla-Status']}": status_name,
       "#{@customfield_name_to_id['Assembla-Milestone']}": milestone[:name],
       "#{@customfield_name_to_id['Assembla-Completed']}": completed_date,
-      "#{@customfield_name_to_id['Rank']}": story_rank
+    #  "#{@customfield_name_to_id['Rank']}": story_rank
     }
   }
 
@@ -208,6 +223,8 @@ def create_ticket_jira(ticket, counter, total, grand_counter, grand_total)
   message = nil
   ok = false
   retries = 0
+#  puts payload.to_json
+
   begin
     response = RestClient::Request.execute(method: :post, url: URL_JIRA_ISSUES, payload: payload.to_json, headers: JIRA_HEADERS)
     # TODO: Investigate why the following does not work, e.g. reporter can create own issues.
